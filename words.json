@@ -1,12 +1,12 @@
 [
-  { "kanji": "溶接", "kana": "ようせつ", "viet": "hàn" },
-  { "kanji": "新規", "kana": "しんき", "viet": "mới" },
-  { "kanji": "通し", "kana": "とおし", "viet": "dài suốt" },
-  { "kanji": "浅い", "kana": "あさい", "viet": "cạn" },
-  { "kanji": "集約", "kana": "しゅうやく", "viet": "sự thu thập" },
-  { "kanji": "金型", "kana": "かながた", "viet": "khuôn dập" },
-  { "kanji": "複雑", "kana": "ふくざつ", "viet": "Phức tạp" },
-  { "kanji": "発色", "kana": "はっしょく", "viet": "Màu sắc" },
-  { "kanji": "目的", "kana": "もくてき", "viet": "Mục đích" },
-  { "kanji": "取合い", "kana": "とりあい", "viet": "Kếtcấu giao nhau" }
+  { "kanji": "猫", "kana": "ねこ", "viet": "con mèo" },
+  { "kanji": "犬", "kana": "いぬ", "viet": "con chó" },
+  { "kanji": "林檎", "kana": "りんご", "viet": "quả táo" },
+  { "kanji": "水", "kana": "みず", "viet": "nước" },
+  { "kanji": "空", "kana": "そら", "viet": "bầu trời" },
+  { "kanji": "火", "kana": "ひ", "viet": "lửa" },
+  { "kanji": "山", "kana": "やま", "viet": "ngọn núi" },
+  { "kanji": "花", "kana": "はな", "viet": "bông hoa" },
+  { "kanji": "車", "kana": "くるま", "viet": "xe hơi" },
+  { "kanji": "友達", "kana": "ともだち", "viet": "bạn bè" }
 ]
