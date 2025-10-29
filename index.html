@@ -7,202 +7,156 @@
   <style>
     body {
       font-family: "Segoe UI", sans-serif;
-      background: #eef4ff;
-      margin: 0;
-      padding: 0;
+      background: #eaf3ff;
       text-align: center;
+      margin: 0;
+      padding: 20px;
     }
-
-    h1 {
-      color: #3949ab;
-      padding: 20px 0;
+    h1 { color: #334; font-size: 28px; margin-bottom: 10px; }
+    .controls { margin-bottom: 15px; }
+    button {
+      border: none; padding: 10px 16px; border-radius: 8px;
+      margin: 5px; font-size: 15px; cursor: pointer; transition: 0.3s;
     }
+    button:hover { opacity: 0.85; }
+    .shuffle { background: #fbc02d; color: #222; }
+    .reset { background: #ef5350; color: white; }
+    .show { background: #4caf50; color: white; }
 
     .container {
       position: relative;
       display: flex;
       justify-content: center;
       align-items: flex-start;
-      gap: 20px;
-      padding: 20px;
-      max-width: 1200px;
-      margin: 0 auto;
+      gap: 25px;
+      padding: 30px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    }
+
+    #canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 0;
     }
 
     .column {
       display: flex;
       flex-direction: column;
       gap: 10px;
-      width: 30%;
       z-index: 1;
     }
 
     .item {
-      background: #e3e9ff;
-      border-radius: 10px;
-      padding: 10px;
+      background: #f5f8ff;
+      border: 2px solid #c7d6ff;
+      border-radius: 8px;
+      padding: 8px 12px;
+      min-width: 150px;
       cursor: pointer;
-      font-size: 1.1em;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      transition: 0.2s;
+      transition: 0.3s;
     }
-
-    .item:hover {
-      background: #d0d8ff;
-    }
-
-    .selected {
-      background: #ffecb3 !important;
-    }
+    .item:hover { background: #d9e6ff; }
+    .selected { background: #b0d4ff; border-color: #4a90e2; }
 
     .correct {
-      background: #c8f7c5 !important;
+      background: #a5d6a7 !important;
+      border-color: #2e7d32 !important;
+      color: #1b5e20;
+      font-weight: bold;
     }
-
     .wrong {
-      background: #f8b4b4 !important;
+      background: #ef9a9a !important;
+      border-color: #c62828 !important;
+      color: #b71c1c;
+      font-weight: bold;
     }
-
-    #canvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    .buttons {
-      margin: 15px;
-    }
-
-    button {
-      margin: 5px;
-      padding: 8px 16px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 1em;
-      color: white;
-    }
-
-    .reset { background: #f44336; }
-    .shuffle { background: #ff9800; }
-    .show { background: #4caf50; }
   </style>
 </head>
 <body>
   <h1>🔗 Nối từ — Kanji / Kana / Nghĩa</h1>
-
-  <div class="buttons">
-    <button class="shuffle" onclick="shuffleAll()">🔀 Shuffle</button>
-    <button class="reset" onclick="resetAll()">🔁 Reset</button>
-    <button class="show" onclick="showAnswers()">👀 Show Answers</button>
+  <div class="controls">
+    <button class="shuffle">🔀 Shuffle</button>
+    <button class="reset">🔁 Reset</button>
+    <button class="show">👀 Show Answers</button>
   </div>
 
   <div class="container" id="container">
     <canvas id="canvas"></canvas>
-    <div class="column" id="kanjiCol"></div>
-    <div class="column" id="kanaCol"></div>
-    <div class="column" id="vietCol"></div>
+    <div class="column" id="kanjiCol"><h3>Kanji</h3></div>
+    <div class="column" id="kanaCol"><h3>Kana</h3></div>
+    <div class="column" id="vietCol"><h3>Nghĩa tiếng Việt</h3></div>
   </div>
 
   <script>
-    let data = [];
-    let connections = [];
-    let selectedKanji = null;
-    let selectedKana = null;
-
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
     const container = document.getElementById("container");
 
+    let data = [], selected = { kanji: null, kana: null, viet: null }, lines = [];
+
     async function loadData() {
       const res = await fetch("words.json?nocache=" + new Date().getTime());
       data = await res.json();
-      renderColumns();
+      shuffleColumns();
     }
 
-    function renderColumns() {
-      const kanjiCol = document.getElementById("kanjiCol");
-      const kanaCol = document.getElementById("kanaCol");
-      const vietCol = document.getElementById("vietCol");
-      kanjiCol.innerHTML = "";
-      kanaCol.innerHTML = "";
-      vietCol.innerHTML = "";
+    function shuffleColumns() {
+      const shuffledKana = [...data].sort(() => Math.random() - 0.5);
+      const shuffledViet = [...data].sort(() => Math.random() - 0.5);
+      renderColumns(data, shuffledKana, shuffledViet);
+    }
 
-      data.kanji.forEach((word, i) => {
-        const el = document.createElement("div");
-        el.className = "item";
-        el.textContent = word;
-        el.onclick = () => selectKanji(el, i);
-        kanjiCol.appendChild(el);
-      });
+    function renderColumns(kanjiList, kanaList, vietList) {
+      document.getElementById("kanjiCol").innerHTML = "<h3>Kanji</h3>";
+      document.getElementById("kanaCol").innerHTML = "<h3>Kana</h3>";
+      document.getElementById("vietCol").innerHTML = "<h3>Nghĩa tiếng Việt</h3>";
+      lines = [];
+      selected = { kanji: null, kana: null, viet: null };
 
-      data.kana.forEach((word, i) => {
-        const el = document.createElement("div");
-        el.className = "item";
-        el.textContent = word;
-        el.onclick = () => selectKana(el, i);
-        kanaCol.appendChild(el);
-      });
-
-      data.vietnamese.forEach((word, i) => {
-        const el = document.createElement("div");
-        el.className = "item";
-        el.textContent = word;
-        el.onclick = () => selectViet(el, i);
-        vietCol.appendChild(el);
-      });
-
+      kanjiList.forEach((w, i) => addItem("kanjiCol", w.kanji, "kanji", w));
+      kanaList.forEach((w, i) => addItem("kanaCol", w.kana, "kana", w));
+      vietList.forEach((w, i) => addItem("vietCol", w.viet, "viet", w));
       drawLines();
     }
 
-    function selectKanji(el, index) {
-      if (selectedKanji) selectedKanji.classList.remove("selected");
-      selectedKanji = el;
+    function addItem(colId, text, type, dataObj) {
+      const div = document.createElement("div");
+      div.className = "item";
+      div.textContent = text;
+      div.onclick = () => handleClick(type, div, dataObj);
+      document.getElementById(colId).appendChild(div);
+    }
+
+    function handleClick(type, el, obj) {
       el.classList.add("selected");
+      selected[type] = { el, obj };
+
+      if (type === "kanji") selected.kana = null, selected.viet = null;
+      if (type === "kana" && selected.kanji) connect(selected.kanji, selected.kana, "kanji-kana");
+      if (type === "viet" && selected.kana) connect(selected.kana, selected.viet, "kana-viet");
+      drawLines();
     }
 
-    function selectKana(el, index) {
-      if (selectedKanji) {
-        const kanjiIndex = [...document.getElementById("kanjiCol").children].indexOf(selectedKanji);
-        const correct = index === kanjiIndex;
-        connections.push({
-          from: selectedKanji,
-          to: el,
-          correct,
-          type: "kanji-kana"
-        });
-        selectedKanji.classList.remove("selected");
-        selectedKanji.classList.add(correct ? "correct" : "wrong");
-        el.classList.add(correct ? "correct" : "wrong");
-        selectedKanji = null;
-        drawLines();
+    function connect(from, to, stage) {
+      if (!from || !to) return;
+      const correct = stage === "kanji-kana"
+        ? from.obj.kana === to.obj.kana
+        : from.obj.viet === to.obj.viet;
+
+      lines.push({ from: from.el, to: to.el, correct, stage });
+
+      if (correct) {
+        from.el.classList.add("correct");
+        to.el.classList.add("correct");
+        if (stage === "kana-viet" && selected.kanji) selected.kanji.el.classList.add("correct");
       } else {
-        // Chọn kana để nối tới nghĩa
-        if (selectedKana) selectedKana.classList.remove("selected");
-        selectedKana = el;
-        el.classList.add("selected");
-      }
-    }
-
-    function selectViet(el, index) {
-      if (selectedKana) {
-        const kanaIndex = [...document.getElementById("kanaCol").children].indexOf(selectedKana);
-        const correct = index === kanaIndex;
-        connections.push({
-          from: selectedKana,
-          to: el,
-          correct,
-          type: "kana-viet"
-        });
-        selectedKana.classList.remove("selected");
-        selectedKana.classList.add(correct ? "correct" : "wrong");
-        el.classList.add(correct ? "correct" : "wrong");
-        selectedKana = null;
-        drawLines();
+        from.el.classList.add("wrong");
+        to.el.classList.add("wrong");
+        if (stage === "kana-viet" && selected.kanji) selected.kanji.el.classList.add("wrong");
       }
     }
 
@@ -210,73 +164,46 @@
       const rect = container.getBoundingClientRect();
       canvas.width = rect.width;
       canvas.height = rect.height;
+      const offsetX = rect.left + window.scrollX;
+      const offsetY = rect.top + window.scrollY;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      connections.forEach(c => {
-        const fromRect = c.from.getBoundingClientRect();
-        const toRect = c.to.getBoundingClientRect();
-
-        const startX = fromRect.right - rect.left;
-        const startY = fromRect.top + fromRect.height / 2 - rect.top;
-        const endX = toRect.left - rect.left;
-        const endY = toRect.top + toRect.height / 2 - rect.top;
-
+      lines.forEach(line => {
+        const r1 = line.from.getBoundingClientRect();
+        const r2 = line.to.getBoundingClientRect();
+        const startX = r1.right - offsetX;
+        const startY = r1.top + r1.height / 2 - offsetY;
+        const endX = r2.left - offsetX;
+        const endY = r2.top + r2.height / 2 - offsetY;
         ctx.beginPath();
         ctx.moveTo(startX, startY);
         ctx.lineTo(endX, endY);
-        ctx.lineWidth = 4;
-        ctx.strokeStyle = c.correct ? "#4CAF50" : "#E53935";
+        ctx.lineWidth = 3.5;
+        ctx.strokeStyle = line.correct ? "#2e7d32" : "#c62828";
         ctx.stroke();
       });
     }
 
-    window.addEventListener("resize", drawLines);
-    window.addEventListener("scroll", drawLines);
-
-    function shuffleAll() {
-      data.kanji.sort(() => Math.random() - 0.5);
-      data.kana.sort(() => Math.random() - 0.5);
-      data.vietnamese.sort(() => Math.random() - 0.5);
-      connections = [];
-      renderColumns();
-    }
-
-    function resetAll() {
-      connections = [];
-      selectedKanji = null;
-      selectedKana = null;
-      document.querySelectorAll(".item").forEach(el => {
-        el.classList.remove("correct", "wrong", "selected");
+    document.querySelector(".shuffle").onclick = shuffleColumns;
+    document.querySelector(".reset").onclick = loadData;
+    document.querySelector(".show").onclick = () => {
+      lines = [];
+      document.querySelectorAll(".item").forEach(e => e.classList.remove("wrong", "correct"));
+      data.forEach(w => {
+        const kanjiEl = [...document.querySelectorAll("#kanjiCol .item")].find(x => x.textContent === w.kanji);
+        const kanaEl = [...document.querySelectorAll("#kanaCol .item")].find(x => x.textContent === w.kana);
+        const vietEl = [...document.querySelectorAll("#vietCol .item")].find(x => x.textContent === w.viet);
+        if (kanjiEl && kanaEl && vietEl) {
+          lines.push({ from: kanjiEl, to: kanaEl, correct: true });
+          lines.push({ from: kanaEl, to: vietEl, correct: true });
+          [kanjiEl, kanaEl, vietEl].forEach(el => el.classList.add("correct"));
+        }
       });
       drawLines();
-    }
+    };
 
-    function showAnswers() {
-      resetAll();
-      document.querySelectorAll(".item").forEach(el => el.classList.remove("selected"));
-      const kanjiCol = document.getElementById("kanjiCol").children;
-      const kanaCol = document.getElementById("kanaCol").children;
-      const vietCol = document.getElementById("vietCol").children;
-      for (let i = 0; i < data.kanji.length; i++) {
-        connections.push({
-          from: kanjiCol[i],
-          to: kanaCol[i],
-          correct: true,
-          type: "kanji-kana"
-        });
-        connections.push({
-          from: kanaCol[i],
-          to: vietCol[i],
-          correct: true,
-          type: "kana-viet"
-        });
-        kanjiCol[i].classList.add("correct");
-        kanaCol[i].classList.add("correct");
-        vietCol[i].classList.add("correct");
-      }
-      drawLines();
-    }
-
+    window.addEventListener("resize", drawLines);
+    window.addEventListener("scroll", drawLines);
     loadData();
   </script>
 </body>
