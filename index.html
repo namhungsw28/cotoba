@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Nối từ tiếng Nhật 3 cột</title>
+  <title>Nối từ tiếng Nhật 3 cột — (Sửa lỗi)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     #svgLayer {
@@ -12,33 +12,35 @@
       top: 0;
       pointer-events: none;
       overflow: visible;
+      z-index: 5;
     }
-    .word-box {
-      user-select: none;
-      transition: all 0.2s ease;
-    }
+    .word-box { user-select: none; transition: all .18s; }
+    .warn-banner { background: #FEF3C7; color:#92400E; border:1px solid #FDE68A; padding:8px; border-radius:8px; margin-bottom:10px; }
   </style>
 </head>
 <body class="bg-gradient-to-b from-indigo-100 via-white to-pink-50 min-h-screen flex items-start justify-center p-6">
   <div class="max-w-6xl w-full">
-    <header class="flex items-center justify-between mb-6">
-      <h1 class="text-3xl font-extrabold text-indigo-700">🔗 Nối từ - Kanji / Kana / Nghĩa</h1>
-      <div class="space-x-3">
+    <header class="flex items-center justify-between mb-4">
+      <h1 class="text-2xl font-extrabold text-indigo-700">🔗 Nối từ — Kanji / Kana / Nghĩa (bản sửa)</h1>
+      <div class="space-x-2">
         <button id="shuffleBtn" class="bg-amber-400 hover:bg-amber-500 text-white px-3 py-2 rounded-lg">🔀 Shuffle</button>
         <button id="resetBtn" class="bg-red-400 hover:bg-red-500 text-white px-3 py-2 rounded-lg">♻️ Reset</button>
         <button id="revealBtn" class="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg">👀 Show Answers</button>
       </div>
     </header>
 
-    <main class="relative bg-white shadow-2xl rounded-2xl p-6 overflow-hidden">
+    <div id="warning" style="display:none" class="warn-banner">Có lỗi khi tải dữ liệu — xem console để biết chi tiết.</div>
+
+    <main id="mainArea" class="relative bg-white shadow-2xl rounded-2xl p-6 overflow-visible">
+      <!-- SVG overlay -->
       <svg id="svgLayer" width="100%" height="100%"></svg>
 
-      <div class="grid grid-cols-3 gap-8 items-start">
+      <div class="grid grid-cols-3 gap-8 items-start" id="colsWrap">
         <div id="kanjiCol" class="space-y-3">
           <p class="text-sm text-gray-500 mb-2 font-medium text-center">Kanji</p>
         </div>
         <div id="kanaCol" class="space-y-3">
-          <p class="text-sm text-gray-500 mb-2 font-medium text-center">Kana (Katakana/Hiragana)</p>
+          <p class="text-sm text-gray-500 mb-2 font-medium text-center">Kana</p>
         </div>
         <div id="vietCol" class="space-y-3">
           <p class="text-sm text-gray-500 mb-2 font-medium text-center">Nghĩa tiếng Việt</p>
@@ -47,160 +49,350 @@
     </main>
 
     <footer class="mt-4 text-sm text-gray-500 text-center">
-      Hướng dẫn: Click Kanji → Kana → Nghĩa để nối. Mỗi lần đúng mũi tên sẽ sáng xanh 💚
+      Hướng dẫn: Chọn Kanji → Kana → Nghĩa để nối. Nếu có lỗi, mình hiển thị cảnh báo và bỏ qua kết nối đó.
     </footer>
   </div>
 
   <script>
+  (function(){
+    // ---- State ----
     let data = [];
     let kanjiItems = [], kanaItems = [], vietItems = [];
-    let connections = [];
-    let selectedKanji = null, selectedKana = null;
+    let connections = []; // {id, kanjiId, kanaId, vietId, status, svgPath}
+    let selKanji = null, selKana = null;
 
+    // DOM refs
     const kanjiCol = document.getElementById('kanjiCol');
     const kanaCol = document.getElementById('kanaCol');
     const vietCol = document.getElementById('vietCol');
     const svgLayer = document.getElementById('svgLayer');
-
     const shuffleBtn = document.getElementById('shuffleBtn');
     const resetBtn = document.getElementById('resetBtn');
     const revealBtn = document.getElementById('revealBtn');
+    const warningBox = document.getElementById('warning');
+    const mainArea = document.getElementById('mainArea');
 
     const uid = (p='id') => p + Math.random().toString(36).slice(2,9);
-    const shuffle = (a) => a.sort(() => Math.random() - 0.5);
+    const shuffle = (arr) => {
+      const a = arr.slice();
+      for (let i = a.length-1; i>0; i--) {
+        const j = Math.floor(Math.random() * (i+1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    };
 
+    // ---- Load JSON safely ----
     async function loadWords() {
-      const res = await fetch("words.json?nocache=" + new Date().getTime());
-      data = await res.json();
-      init();
+      try {
+        const res = await fetch('words.json?nocache=' + Date.now());
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        data = await res.json();
+        if (!Array.isArray(data)) throw new Error('words.json phải là mảng');
+        init();
+      } catch (err) {
+        console.error('Lỗi khi tải words.json:', err);
+        warningBox.style.display = 'block';
+        warningBox.textContent = '⚠️ Lỗi khi tải dữ liệu: ' + (err.message || err);
+      }
     }
 
+    // ---- Init UI ----
     function init() {
-      kanjiItems = data.map(p => ({ id: uid('K'), text: p.kanji }));
-      kanaItems = shuffle(data).map(p => ({ id: uid('A'), text: p.kana }));
-      vietItems = shuffle(data).map(p => ({ id: uid('V'), text: p.viet }));
+      // map to items with ids
+      kanjiItems = data.map(d => ({ id: uid('K'), text: d.kanji }));
+      kanaItems  = shuffle(data).map(d => ({ id: uid('A'), text: d.kana }));
+      vietItems  = shuffle(data).map(d => ({ id: uid('V'), text: d.viet }));
+      connections = [];
+      selKanji = selKana = null;
       renderColumns();
+      // ensure svg covers content area properly
+      requestAnimationFrame(() => adjustSvgSize());
+      window.addEventListener('resize', () => {
+        // small delay for stable layout
+        setTimeout(() => { adjustSvgSize(); redrawAll(); }, 120);
+      });
     }
 
+    function adjustSvgSize() {
+      // make svg cover mainArea bounding rect
+      const rect = mainArea.getBoundingClientRect();
+      svgLayer.setAttribute('width', rect.width);
+      svgLayer.setAttribute('height', rect.height);
+      svgLayer.style.left = rect.left + 'px';
+      svgLayer.style.top = rect.top + 'px';
+    }
+
+    // ---- Render columns ----
     function renderColumns() {
-      [kanjiCol, kanaCol, vietCol].forEach(c => c.querySelectorAll('.word-box').forEach(n => n.remove()));
-      svgLayer.innerHTML = '';
+      // clear existing
+      [kanjiCol, kanaCol, vietCol].forEach(c => {
+        c.querySelectorAll('.word-box').forEach(n => n.remove());
+      });
+      clearSvg();
       connections = [];
-      selectedKanji = null; selectedKana = null;
 
       kanjiItems.forEach(item => {
         const box = document.createElement('div');
-        box.className = "word-box bg-indigo-50 border border-indigo-200 hover:shadow-md rounded-xl p-3 text-center cursor-pointer text-lg font-semibold text-indigo-700";
-        box.textContent = item.text;
-        box.onclick = () => selectKanji(item, box);
+        box.className = "word-box bg-indigo-50 border border-indigo-200 rounded-xl p-3 text-center cursor-pointer text-lg font-semibold text-indigo-700";
+        box.textContent = item.text || '';
+        box.dataset.id = item.id;
+        box.onclick = () => { selectKanji(item.id); };
         item.el = box;
         kanjiCol.appendChild(box);
       });
 
       kanaItems.forEach(item => {
         const box = document.createElement('div');
-        box.className = "word-box bg-blue-50 border border-blue-200 hover:shadow-md rounded-xl p-3 text-center cursor-pointer text-lg font-semibold text-blue-700";
-        box.textContent = item.text;
-        box.onclick = () => selectKana(item, box);
+        box.className = "word-box bg-blue-50 border border-blue-200 rounded-xl p-3 text-center cursor-pointer text-lg font-semibold text-blue-700";
+        box.textContent = item.text || '';
+        box.dataset.id = item.id;
+        box.onclick = () => { selectKana(item.id); };
         item.el = box;
         kanaCol.appendChild(box);
       });
 
       vietItems.forEach(item => {
         const box = document.createElement('div');
-        box.className = "word-box bg-rose-50 border border-rose-200 hover:shadow-md rounded-xl p-3 text-center cursor-pointer text-lg font-semibold text-rose-700";
-        box.textContent = item.text;
-        box.onclick = () => selectViet(item, box);
+        box.className = "word-box bg-rose-50 border border-rose-200 rounded-xl p-3 text-center cursor-pointer text-lg font-semibold text-rose-700";
+        box.textContent = item.text || '';
+        box.dataset.id = item.id;
+        box.onclick = () => { selectViet(item.id); };
         item.el = box;
         vietCol.appendChild(box);
       });
     }
 
-    function selectKanji(item, el) {
+    // ---- Selection handlers (with guards) ----
+    function selectKanji(kid) {
+      const item = kanjiItems.find(x => x.id === kid);
+      if (!item || !item.el) { console.warn('selectKanji: item missing', kid); return; }
+      // visual highlight
       kanjiCol.querySelectorAll('.word-box').forEach(b => b.classList.remove('ring-4','ring-indigo-300'));
-      el.classList.add('ring-4','ring-indigo-300');
-      selectedKanji = item;
-      selectedKana = null;
-    }
-
-    function selectKana(item, el) {
-      if (!selectedKanji) return;
+      item.el.classList.add('ring-4','ring-indigo-300');
+      selKanji = item;
+      selKana = null;
+      // clear any kana highlight
       kanaCol.querySelectorAll('.word-box').forEach(b => b.classList.remove('ring-4','ring-blue-300'));
-      el.classList.add('ring-4','ring-blue-300');
-      selectedKana = item;
     }
 
-    function selectViet(item, el) {
-      if (!selectedKanji || !selectedKana) return;
+    function selectKana(aid) {
+      if (!selKanji) {
+        // show small hint
+        flash(kanjiCol);
+        return;
+      }
+      const item = kanaItems.find(x => x.id === aid);
+      if (!item || !item.el) { console.warn('selectKana: item missing', aid); return; }
+      kanaCol.querySelectorAll('.word-box').forEach(b => b.classList.remove('ring-4','ring-blue-300'));
+      item.el.classList.add('ring-4','ring-blue-300');
+      selKana = item;
+    }
 
-      const conn = { id: uid('C'), kanji: selectedKanji, kana: selectedKana, viet: item, status: 'neutral' };
+    function selectViet(vid) {
+      if (!selKanji || !selKana) {
+        // need two-step selection
+        flash(kanaCol);
+        return;
+      }
+      const item = vietItems.find(x => x.id === vid);
+      if (!item || !item.el) { console.warn('selectViet: item missing', vid); return; }
+      // before create, remove any existing connections that use same kanji/kana/viet
+      const existLeft = connections.find(c => c.kanjiId === selKanji.id);
+      if (existLeft) removeConnection(existLeft.id);
+      const existKana = connections.find(c => c.kanaId === selKana.id);
+      if (existKana) removeConnection(existKana.id);
+      const existViet = connections.find(c => c.vietId === vid);
+      if (existViet) removeConnection(existViet.id);
+
+      const conn = { id: uid('C'), kanjiId: selKanji.id, kanaId: selKana.id, vietId: vid, status: 'neutral', svgPath: null };
       connections.push(conn);
       drawConnection(conn);
       evaluateConnection(conn);
 
-      [kanjiCol, kanaCol].forEach(c => c.querySelectorAll('.word-box').forEach(b => b.classList.remove('ring-4','ring-indigo-300','ring-blue-300')));
-      selectedKanji = null;
-      selectedKana = null;
+      // clear selection visuals
+      kanjiCol.querySelectorAll('.word-box').forEach(b => b.classList.remove('ring-4','ring-indigo-300'));
+      kanaCol.querySelectorAll('.word-box').forEach(b => b.classList.remove('ring-4','ring-blue-300'));
+      selKanji = selKana = null;
     }
 
-    function getCoords(el) {
-      const rect = el.getBoundingClientRect();
-      const svgRect = svgLayer.getBoundingClientRect();
-      return { x: rect.left + rect.width / 2 - svgRect.left, y: rect.top + rect.height / 2 - svgRect.top };
+    // small flash effect
+    function flash(el) {
+      el.classList.add('animate-pulse');
+      setTimeout(()=> el.classList.remove('animate-pulse'), 400);
+    }
+
+    // ---- Drawing helpers ----
+    function clearSvg() {
+      while (svgLayer.firstChild) svgLayer.removeChild(svgLayer.firstChild);
+    }
+
+    function getCenterRelative(el) {
+      if (!el) return null;
+      const rectEl = el.getBoundingClientRect();
+      const rectSvg = mainArea.getBoundingClientRect(); // use main area as reference
+      const x = rectEl.left + rectEl.width / 2 - rectSvg.left;
+      const y = rectEl.top + rectEl.height / 2 - rectSvg.top;
+      return { x, y };
     }
 
     function drawConnection(conn) {
-      const l = getCoords(conn.kanji.el);
-      const m = getCoords(conn.kana.el);
-      const r = getCoords(conn.viet.el);
+      // fetch item elements robustly
+      const k = kanjiItems.find(i => i.id === conn.kanjiId);
+      const a = kanaItems.find(i => i.id === conn.kanaId);
+      const v = vietItems.find(i => i.id === conn.vietId);
+      if (!k || !a || !v) {
+        console.warn('drawConnection: missing items, skipping draw', conn, {k,a,v});
+        return;
+      }
+      if (!k.el || !a.el || !v.el) {
+        console.warn('drawConnection: DOM elements not ready yet', conn);
+        return;
+      }
 
-      const pathD = `M ${l.x} ${l.y} C ${l.x + 80} ${l.y} ${m.x - 80} ${m.y} ${m.x} ${m.y}
-                     M ${m.x} ${m.y} C ${m.x + 80} ${m.y} ${r.x - 80} ${r.y} ${r.x} ${r.y}`;
+      const p1 = getCenterRelative(k.el);
+      const p2 = getCenterRelative(a.el);
+      const p3 = getCenterRelative(v.el);
+      if (!p1 || !p2 || !p3) { console.warn('drawConnection: no coords', p1,p2,p3); return; }
 
+      // build a two-segment smooth path: kanji -> kana -> viet
+      const d1 = `M ${p1.x} ${p1.y} C ${p1.x + 80} ${p1.y} ${p2.x - 80} ${p2.y} ${p2.x} ${p2.y}`;
+      const d2 = `M ${p2.x} ${p2.y} C ${p2.x + 80} ${p2.y} ${p3.x - 80} ${p3.y} ${p3.x} ${p3.y}`;
       const path = document.createElementNS("http://www.w3.org/2000/svg","path");
-      path.setAttribute('d', pathD);
+      path.setAttribute('d', d1 + ' ' + d2);
       path.setAttribute('stroke', '#9CA3AF');
       path.setAttribute('stroke-width', '6');
       path.setAttribute('fill', 'none');
-      path.setAttribute('stroke-linecap','round');
+      path.setAttribute('stroke-linecap', 'round');
+      path.setAttribute('stroke-linejoin','round');
       svgLayer.appendChild(path);
       conn.svgPath = path;
+
+      // add small delete button using foreignObject (clickable)
+      const centerX = (p1.x + p3.x) / 2;
+      const centerY = (p1.y + p3.y) / 2;
+      const fo = document.createElementNS("http://www.w3.org/2000/svg","foreignObject");
+      fo.setAttribute('x', centerX - 14);
+      fo.setAttribute('y', centerY - 14);
+      fo.setAttribute('width', 28);
+      fo.setAttribute('height', 28);
+      fo.style.overflow = 'visible';
+      const div = document.createElement('div');
+      div.setAttribute('xmlns','http://www.w3.org/1999/xhtml');
+      div.innerHTML = `<button title="Remove" style="all:unset;cursor:pointer;width:28px;height:28px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid rgba(0,0,0,0.06)">✕</button>`;
+      fo.appendChild(div);
+      svgLayer.appendChild(fo);
+      div.querySelector('button').onclick = (e) => { e.stopPropagation(); removeConnection(conn.id); };
+      conn.deleteFO = fo;
     }
 
+    // ---- Remove connection ----
+    function removeConnection(id) {
+      const idx = connections.findIndex(c => c.id === id);
+      if (idx === -1) return;
+      const c = connections[idx];
+      if (c.svgPath && c.svgPath.parentNode) c.svgPath.remove();
+      if (c.deleteFO && c.deleteFO.parentNode) c.deleteFO.remove();
+      connections.splice(idx,1);
+    }
+
+    // ---- Evaluate correctness ----
     function evaluateConnection(conn) {
-      const correct = data.find(p => p.kanji === conn.kanji.text);
-      const isRight = correct && correct.kana === conn.kana.text && correct.viet === conn.viet.text;
-      conn.status = isRight ? 'correct' : 'wrong';
+      // find original data row by kanji text
+      const kanjiItem = kanjiItems.find(i => i.id === conn.kanjiId);
+      if (!kanjiItem) { conn.status = 'wrong'; updateColor(conn); return; }
+      const row = data.find(r => r.kanji === kanjiItem.text);
+      if (!row) { conn.status = 'wrong'; updateColor(conn); return; }
+      const kanaItem = kanaItems.find(i => i.id === conn.kanaId);
+      const vietItem = vietItems.find(i => i.id === conn.vietId);
+      if (!kanaItem || !vietItem) { conn.status = 'wrong'; updateColor(conn); return; }
+      const ok = (row.kana === kanaItem.text && row.viet === vietItem.text);
+      conn.status = ok ? 'correct' : 'wrong';
       updateColor(conn);
     }
 
     function updateColor(conn) {
       if (!conn.svgPath) return;
-      const color = conn.status === 'correct' ? '#16A34A' : '#DC2626';
-      conn.svgPath.setAttribute('stroke', color);
-      conn.svgPath.setAttribute('stroke-width', '8');
+      if (conn.status === 'correct') {
+        conn.svgPath.setAttribute('stroke', '#16A34A'); // green
+        conn.svgPath.setAttribute('stroke-width','8');
+      } else if (conn.status === 'wrong') {
+        conn.svgPath.setAttribute('stroke', '#DC2626'); // red
+        conn.svgPath.setAttribute('stroke-width','8');
+      } else {
+        conn.svgPath.setAttribute('stroke', '#9CA3AF');
+        conn.svgPath.setAttribute('stroke-width','6');
+      }
     }
 
-    shuffleBtn.onclick = () => init();
-    resetBtn.onclick = () => renderColumns();
-    revealBtn.onclick = () => showAnswers();
-
-    function showAnswers() {
-      svgLayer.innerHTML = '';
+    // ---- Redraw everything (used on resize / reset) ----
+    function redrawAll() {
+      // remove svg nodes and re-draw from connections array
+      clearSvg();
+      // re-draw each connection
+      const copy = connections.slice();
       connections = [];
+      copy.forEach(c => {
+        // re-create same object (preserve ids and selected ids)
+        const obj = { id: c.id, kanjiId: c.kanjiId, kanaId: c.kanaId, vietId: c.vietId, status: c.status, svgPath: null, deleteFO: null };
+        connections.push(obj);
+        drawConnection(obj);
+        // set status color after draw
+        obj.status = c.status || 'neutral';
+        updateColor(obj);
+      });
+    }
+
+    // ---- Reveal correct answers ----
+    function revealAll() {
+      clearSvg();
+      connections = [];
+      // for each data row, find corresponding current items (there may be none if shuffle changed)
       data.forEach(row => {
         const k = kanjiItems.find(i => i.text === row.kanji);
         const a = kanaItems.find(i => i.text === row.kana);
         const v = vietItems.find(i => i.text === row.viet);
-        if (!k || !a || !v) return;
-        const conn = { id: uid('C'), kanji: k, kana: a, viet: v, status: 'correct' };
-        connections.push(conn);
-        drawConnection(conn);
-        updateColor(conn);
+        if (!k || !a || !v) return; // skip if not present
+        const obj = { id: uid('C'), kanjiId: k.id, kanaId: a.id, vietId: v.id, status: 'correct' };
+        connections.push(obj);
+        drawConnection(obj);
+        updateColor(obj);
       });
     }
 
+    // ---- UI events ----
+    shuffleBtn.addEventListener('click', () => {
+      // shuffle middle and right columns only
+      kanaItems = shuffle(kanaItems);
+      vietItems = shuffle(vietItems);
+      renderColumns();
+      // small delay then redraw
+      setTimeout(() => { adjustSvgSize(); redrawAll(); }, 80);
+    });
+    resetBtn.addEventListener('click', () => {
+      renderColumns();
+      setTimeout(()=> { adjustSvgSize(); redrawAll(); }, 80);
+    });
+    revealBtn.addEventListener('click', () => revealAll());
+
+    // ---- Safety: when clicking outside, clear selection ----
+    document.addEventListener('click', (e) => {
+      const inside = mainArea.contains(e.target);
+      if (!inside) {
+        kanjiCol.querySelectorAll('.word-box').forEach(b => b.classList.remove('ring-4','ring-indigo-300'));
+        kanaCol.querySelectorAll('.word-box').forEach(b => b.classList.remove('ring-4','ring-blue-300'));
+        selKanji = selKana = null;
+      }
+    });
+
+    // ---- Init load ----
     loadWords();
+
+    // Expose for debugging (optional)
+    window.__matchDebug = {
+      data, kanjiItems, kanaItems, vietItems, connections, redrawAll
+    };
+  })();
   </script>
 </body>
 </html>
