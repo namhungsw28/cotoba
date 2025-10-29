@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Nối từ - Nhật → Việt</title>
+  <title>Nối từ tiếng Nhật 3 cột</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     #svgLayer {
@@ -17,71 +17,51 @@
       user-select: none;
       transition: all 0.2s ease;
     }
-    .pulse {
-      animation: pulse 0.45s ease;
-    }
-    @keyframes pulse {
-      from { transform: scale(0.96); }
-      to { transform: scale(1); }
-    }
   </style>
 </head>
-<body class="bg-gradient-to-b from-sky-100 via-white to-pink-50 min-h-screen flex items-start justify-center p-6">
-  <div class="max-w-4xl w-full">
+<body class="bg-gradient-to-b from-indigo-100 via-white to-pink-50 min-h-screen flex items-start justify-center p-6">
+  <div class="max-w-6xl w-full">
     <header class="flex items-center justify-between mb-6">
-      <h1 class="text-3xl font-extrabold text-sky-700">🔗 Nối từ — tiếng Nhật → tiếng Việt</h1>
+      <h1 class="text-3xl font-extrabold text-indigo-700">🔗 Nối từ - Kanji / Kana / Nghĩa</h1>
       <div class="space-x-3">
         <button id="shuffleBtn" class="bg-amber-400 hover:bg-amber-500 text-white px-3 py-2 rounded-lg">🔀 Shuffle</button>
         <button id="resetBtn" class="bg-red-400 hover:bg-red-500 text-white px-3 py-2 rounded-lg">♻️ Reset</button>
+        <button id="revealBtn" class="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg">👀 Show Answers</button>
       </div>
     </header>
 
-    <main class="relative bg-white shadow-2xl rounded-2xl p-6">
+    <main class="relative bg-white shadow-2xl rounded-2xl p-6 overflow-hidden">
       <svg id="svgLayer" width="100%" height="100%"></svg>
 
-      <div class="grid grid-cols-2 gap-6 items-start">
-        <div id="leftCol" class="space-y-3">
-          <p class="text-sm text-gray-500 mb-2 font-medium">Từ tiếng Nhật</p>
+      <div class="grid grid-cols-3 gap-8 items-start">
+        <div id="kanjiCol" class="space-y-3">
+          <p class="text-sm text-gray-500 mb-2 font-medium text-center">Kanji</p>
         </div>
-        <div id="rightCol" class="space-y-3">
-          <p class="text-sm text-gray-500 mb-2 font-medium text-right">Nghĩa tiếng Việt</p>
+        <div id="kanaCol" class="space-y-3">
+          <p class="text-sm text-gray-500 mb-2 font-medium text-center">Kana (Katakana/Hiragana)</p>
         </div>
-      </div>
-
-      <div class="mt-6 flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <div class="flex items-center gap-2">
-            <span class="w-4 h-4 inline-block rounded-sm bg-gray-400"></span><span class="text-sm text-gray-600">Chưa kiểm tra</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <span class="w-4 h-4 inline-block rounded-sm bg-green-600"></span><span class="text-sm text-gray-600">Đúng</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <span class="w-4 h-4 inline-block rounded-sm bg-red-600"></span><span class="text-sm text-gray-600">Sai</span>
-          </div>
-        </div>
-
-        <div class="flex items-center gap-2">
-          <button id="revealBtn" class="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg">👀 Show Answers</button>
+        <div id="vietCol" class="space-y-3">
+          <p class="text-sm text-gray-500 mb-2 font-medium text-center">Nghĩa tiếng Việt</p>
         </div>
       </div>
     </main>
 
-    <footer class="mt-4 text-sm text-gray-500">
-      Hướng dẫn: <strong>Click</strong> 1 từ bên trái → <strong>click</strong> 1 nghĩa bên phải để tạo mũi tên.
+    <footer class="mt-4 text-sm text-gray-500 text-center">
+      Hướng dẫn: Click Kanji → Kana → Nghĩa để nối. Mỗi lần đúng mũi tên sẽ sáng xanh 💚
     </footer>
   </div>
 
   <script>
-    let pairs = [];
-    let leftItems = [];
-    let rightItems = [];
+    let data = [];
+    let kanjiItems = [], kanaItems = [], vietItems = [];
     let connections = [];
-    let selectedLeft = null;
+    let selectedKanji = null, selectedKana = null;
 
-    const leftCol = document.getElementById('leftCol');
-    const rightCol = document.getElementById('rightCol');
+    const kanjiCol = document.getElementById('kanjiCol');
+    const kanaCol = document.getElementById('kanaCol');
+    const vietCol = document.getElementById('vietCol');
     const svgLayer = document.getElementById('svgLayer');
+
     const shuffleBtn = document.getElementById('shuffleBtn');
     const resetBtn = document.getElementById('resetBtn');
     const revealBtn = document.getElementById('revealBtn');
@@ -91,78 +71,91 @@
 
     async function loadWords() {
       const res = await fetch("words.json?nocache=" + new Date().getTime());
-      pairs = await res.json();
+      data = await res.json();
       init();
     }
 
     function init() {
-      leftItems = pairs.map(p => ({ id: uid('L'), text: p.j }));
-      rightItems = shuffle(pairs).map(p => ({ id: uid('R'), text: p.v }));
+      kanjiItems = data.map(p => ({ id: uid('K'), text: p.kanji }));
+      kanaItems = shuffle(data).map(p => ({ id: uid('A'), text: p.kana }));
+      vietItems = shuffle(data).map(p => ({ id: uid('V'), text: p.viet }));
       renderColumns();
     }
 
     function renderColumns() {
-      leftCol.querySelectorAll('.word-box').forEach(n => n.remove());
-      rightCol.querySelectorAll('.word-box').forEach(n => n.remove());
+      [kanjiCol, kanaCol, vietCol].forEach(c => c.querySelectorAll('.word-box').forEach(n => n.remove()));
       svgLayer.innerHTML = '';
       connections = [];
+      selectedKanji = null; selectedKana = null;
 
-      leftItems.forEach(item => {
+      kanjiItems.forEach(item => {
         const box = document.createElement('div');
-        box.className = "word-box bg-sky-50 border border-sky-200 hover:shadow-md rounded-xl p-3 cursor-pointer flex justify-between";
-        box.innerHTML = `<div class='text-lg font-semibold text-sky-700'>${item.text}</div>`;
-        box.onclick = () => selectLeft(item.id, box);
+        box.className = "word-box bg-indigo-50 border border-indigo-200 hover:shadow-md rounded-xl p-3 text-center cursor-pointer text-lg font-semibold text-indigo-700";
+        box.textContent = item.text;
+        box.onclick = () => selectKanji(item, box);
         item.el = box;
-        leftCol.appendChild(box);
+        kanjiCol.appendChild(box);
       });
 
-      rightItems.forEach(item => {
+      kanaItems.forEach(item => {
         const box = document.createElement('div');
-        box.className = "word-box bg-rose-50 border border-rose-200 rounded-xl p-3 cursor-pointer flex justify-between";
-        box.innerHTML = `<div class='text-lg font-semibold text-rose-700 text-right w-full'>${item.text}</div>`;
-        box.onclick = () => selectRight(item.id, box);
+        box.className = "word-box bg-blue-50 border border-blue-200 hover:shadow-md rounded-xl p-3 text-center cursor-pointer text-lg font-semibold text-blue-700";
+        box.textContent = item.text;
+        box.onclick = () => selectKana(item, box);
         item.el = box;
-        rightCol.appendChild(box);
+        kanaCol.appendChild(box);
+      });
+
+      vietItems.forEach(item => {
+        const box = document.createElement('div');
+        box.className = "word-box bg-rose-50 border border-rose-200 hover:shadow-md rounded-xl p-3 text-center cursor-pointer text-lg font-semibold text-rose-700";
+        box.textContent = item.text;
+        box.onclick = () => selectViet(item, box);
+        item.el = box;
+        vietCol.appendChild(box);
       });
     }
 
-    function selectLeft(id, el) {
-      leftCol.querySelectorAll('.word-box').forEach(b => b.classList.remove('ring-4','ring-sky-300'));
-      el.classList.add('ring-4','ring-sky-300');
-      selectedLeft = id;
+    function selectKanji(item, el) {
+      kanjiCol.querySelectorAll('.word-box').forEach(b => b.classList.remove('ring-4','ring-indigo-300'));
+      el.classList.add('ring-4','ring-indigo-300');
+      selectedKanji = item;
+      selectedKana = null;
     }
 
-    function selectRight(rightId, rightEl) {
-      if (!selectedLeft) return;
-      const prior = connections.find(c => c.leftId === selectedLeft);
-      if (prior) removeConnection(prior.id);
+    function selectKana(item, el) {
+      if (!selectedKanji) return;
+      kanaCol.querySelectorAll('.word-box').forEach(b => b.classList.remove('ring-4','ring-blue-300'));
+      el.classList.add('ring-4','ring-blue-300');
+      selectedKana = item;
+    }
 
-      const used = connections.find(c => c.rightId === rightId);
-      if (used) removeConnection(used.id);
+    function selectViet(item, el) {
+      if (!selectedKanji || !selectedKana) return;
 
-      const connId = uid('C');
-      const conn = { id: connId, leftId: selectedLeft, rightId, status: 'neutral' };
+      const conn = { id: uid('C'), kanji: selectedKanji, kana: selectedKana, viet: item, status: 'neutral' };
       connections.push(conn);
       drawConnection(conn);
-      selectedLeft = null;
-      leftCol.querySelectorAll('.word-box').forEach(b => b.classList.remove('ring-4','ring-sky-300'));
       evaluateConnection(conn);
+
+      [kanjiCol, kanaCol].forEach(c => c.querySelectorAll('.word-box').forEach(b => b.classList.remove('ring-4','ring-indigo-300','ring-blue-300')));
+      selectedKanji = null;
+      selectedKana = null;
     }
 
     function getCoords(el) {
       const rect = el.getBoundingClientRect();
       const svgRect = svgLayer.getBoundingClientRect();
-      return { x: rect.right - svgRect.left, y: rect.top + rect.height/2 - svgRect.top };
+      return { x: rect.left + rect.width / 2 - svgRect.left, y: rect.top + rect.height / 2 - svgRect.top };
     }
 
     function drawConnection(conn) {
-      const leftEl = leftItems.find(l => l.id === conn.leftId).el;
-      const rightEl = rightItems.find(r => r.id === conn.rightId).el;
-      const l = getCoords(leftEl);
-      const r = getCoords(rightEl);
-      const dx = Math.abs(r.x - l.x);
-      const cp = Math.min(120, dx * 0.5);
-      const pathD = `M ${l.x} ${l.y} C ${l.x + cp} ${l.y} ${r.x - cp} ${r.y} ${r.x} ${r.y}`;
+      const l = getCoords(conn.kanji.el);
+      const m = getCoords(conn.kana.el);
+      const r = getCoords(conn.viet.el);
+
+      const pathD = `M ${l.x} ${l.y} C ${l.x + 80} ${l.y} ${m.x - 80} ${m.y} ${m.x} ${m.y}
+                     M ${m.x} ${m.y} C ${m.x + 80} ${m.y} ${r.x - 80} ${r.y} ${r.x} ${r.y}`;
 
       const path = document.createElementNS("http://www.w3.org/2000/svg","path");
       path.setAttribute('d', pathD);
@@ -174,25 +167,17 @@
       conn.svgPath = path;
     }
 
-    function removeConnection(id) {
-      const i = connections.findIndex(c => c.id === id);
-      if (i === -1) return;
-      const c = connections[i];
-      if (c.svgPath) c.svgPath.remove();
-      connections.splice(i,1);
-    }
-
     function evaluateConnection(conn) {
-      const l = leftItems.find(x => x.id === conn.leftId).text;
-      const r = rightItems.find(x => x.id === conn.rightId).text;
-      const correct = pairs.find(p => p.j === l)?.v;
-      conn.status = (correct === r) ? 'correct' : 'wrong';
+      const correct = data.find(p => p.kanji === conn.kanji.text);
+      const isRight = correct && correct.kana === conn.kana.text && correct.viet === conn.viet.text;
+      conn.status = isRight ? 'correct' : 'wrong';
       updateColor(conn);
     }
 
     function updateColor(conn) {
       if (!conn.svgPath) return;
-      conn.svgPath.setAttribute('stroke', conn.status === 'correct' ? '#16A34A' : '#DC2626');
+      const color = conn.status === 'correct' ? '#16A34A' : '#DC2626';
+      conn.svgPath.setAttribute('stroke', color);
       conn.svgPath.setAttribute('stroke-width', '8');
     }
 
@@ -203,11 +188,12 @@
     function showAnswers() {
       svgLayer.innerHTML = '';
       connections = [];
-      leftItems.forEach(L => {
-        const correct = pairs.find(p => p.j === L.text)?.v;
-        const R = rightItems.find(r => r.text === correct);
-        if (!R) return;
-        const conn = { id: uid('C'), leftId: L.id, rightId: R.id, status: 'correct' };
+      data.forEach(row => {
+        const k = kanjiItems.find(i => i.text === row.kanji);
+        const a = kanaItems.find(i => i.text === row.kana);
+        const v = vietItems.find(i => i.text === row.viet);
+        if (!k || !a || !v) return;
+        const conn = { id: uid('C'), kanji: k, kana: a, viet: v, status: 'correct' };
         connections.push(conn);
         drawConnection(conn);
         updateColor(conn);
