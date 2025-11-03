@@ -1,12 +1,52 @@
 [
-  { "kanji": "取合い", "kana": "とりあい", "viet": "Kết cấu giao nhau" },
-  { "kanji": "溶接", "kana": "ようせつ", "viet": "hàn" },
-  { "kanji": "新規", "kana": "しんき", "viet": "mới" },
-  { "kanji": "通し", "kana": "とおし", "viet": "dài suốt" },
-  { "kanji": "集約", "kana": "しゅうやく", "viet": "Sự thu thập" },
-  { "kanji": "金型", "kana": "かながた", "viet": "Khuôn dập" },
-  { "kanji": "実施", "kana": "じっし", "viet": "Tiến hành" },
-  { "kanji": "複雑", "kana": "ふくざつ", "viet": "Phức tạp" },
-  { "kanji": "発色", "kana": "はっしょく", "viet": "Màu sắc" },
-  { "kanji": "目的", "kana": "もくてき", "viet": "Mục đích" }
+  {
+    "kanji": "漢字",
+    "kana": "かんじ",
+    "viet": "Hán tự·"
+  },
+  {
+    "kanji": "あああ·",
+    "kana": "aaa",
+    "viet": "aaa"
+  },
+  {
+    "kanji": "こここ",
+    "kana": "こここ",
+    "viet": "こここ"
+  },
+  {
+    "kanji": "び",
+    "kana": "bb",
+    "viet": "bb"
+  },
+  {
+    "kanji": "じ",
+    "kana": "じ",
+    "viet": "じ"
+  },
+  {
+    "kanji": "テ",
+    "kana": "テ",
+    "viet": "て"
+  },
+  {
+    "kanji": "うら",
+    "kana": "うら",
+    "viet": "うら"
+  },
+  {
+    "kanji": "へい",
+    "kana": "へい",
+    "viet": "hei"
+  },
+  {
+    "kanji": "無視指示",
+    "kana": "むし",
+    "viet": "むし"
+  },
+  {
+    "kanji": "あさ",
+    "kana": "あさ",
+    "viet": "あ"
+  }
 ]
