@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Trình tạo từ vựng (Kanji - Kana - Việt)</title>
+<style>
+  body {
+    font-family: "Segoe UI", sans-serif;
+    background: #f0f7ff;
+    margin: 0; padding: 20px;
+  }
+  h1 {
+    text-align: center;
+    color: #0056b3;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+  }
+  th, td {
+    padding: 8px;
+    text-align: center;
+  }
+  th {
+    background-color: #007bff;
+    color: white;
+  }
+  input {
+    width: 90%;
+    padding: 6px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+  }
+  button {
+    padding: 10px 16px;
+    margin: 8px;
+    border: none;
+    border-radius: 8px;
+    background-color: #007bff;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  button:hover {
+    background-color: #0056b3;
+  }
+  textarea {
+    width: 100%;
+    height: 220px;
+    border-radius: 8px;
+    padding: 10px;
+    font-family: monospace;
+    margin-top: 10px;
+  }
+</style>
+</head>
+<body>
+
+<h1>📘 Trình tạo từ vựng Kanji - Kana - Nghĩa tiếng Việt</h1>
+
+<label>Nhập số từ cần thêm:</label>
+<input type="number" id="count" min="1" max="100" value="5">
+<button onclick="generateTable()">Tạo bảng nhập</button>
+
+<form id="wordForm">
+  <table id="inputTable"></table>
+</form>
+
+<button onclick="exportJSON()">💾 Tạo file JSON</button>
+
+<h3>Xem trước JSON:</h3>
+<textarea id="jsonPreview" readonly></textarea>
+
+<script>
+function generateTable() {
+  const count = parseInt(document.getElementById("count").value);
+  const table = document.getElementById("inputTable");
+  table.innerHTML = `
+    <tr>
+      <th>Kanji</th>
+      <th>Kana</th>
+      <th>Tiếng Việt</th>
+    </tr>`;
+  for (let i = 0; i < count; i++) {
+    table.innerHTML += `
+      <tr>
+        <td><input placeholder="Kanji"></td>
+        <td><input placeholder="Kana"></td>
+        <td><input placeholder="Nghĩa tiếng Việt"></td>
+      </tr>`;
+  }
+}
+
+function exportJSON() {
+  const rows = document.querySelectorAll("#inputTable tr");
+  const data = [];
+  rows.forEach((row, i) => {
+    if (i === 0) return; // skip header
+    const inputs = row.querySelectorAll("input");
+    if (inputs[0].value && inputs[1].value && inputs[2].value) {
+      data.push({
+        kanji: inputs[0].value.trim(),
+        kana: inputs[1].value.trim(),
+        viet: inputs[2].value.trim()
+      });
+    }
+  });
+  const json = JSON.stringify(data, null, 2);
+  document.getElementById("jsonPreview").value = json;
+
+  // tạo file JSON tải về
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "words.json";
+  a.click();
+}
+</script>
+
+</body>
+</html>
